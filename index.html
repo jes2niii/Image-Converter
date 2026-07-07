@@ -691,8 +691,8 @@ body {
 
     function sortFiles(method) {
       var sorted = files.slice();
-      if (method === 'name-asc') sorted.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase()); });
-      else if (method === 'name-desc') sorted.sort(function (a, b) { return b.name.toLowerCase().localeCompare(a.name.toLowerCase()); });
+      if (method === 'name-asc') sorted.sort(function (a, b) { return a.name.toLowerCase().localeCompare(b.name.toLowerCase(), undefined, { numeric: true }); });
+      else if (method === 'name-desc') sorted.sort(function (a, b) { return b.name.toLowerCase().localeCompare(a.name.toLowerCase(), undefined, { numeric: true }); });
       else if (method === 'size-asc') sorted.sort(function (a, b) { return a.size - b.size; });
       else if (method === 'size-desc') sorted.sort(function (a, b) { return b.size - a.size; });
       else return;
