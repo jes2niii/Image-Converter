@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.2/Sortable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -165,10 +166,45 @@ body {
 }
 .overlay p { color: #ccc; font-size: 0.95rem; }
 @keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Batch Progress Bar ── */
+.batch-progress {
+  display: none;
+  margin-bottom: 20px;
+  background: #1a1a24;
+  border: 1px solid #2a2a36;
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+.batch-progress.visible { display: flex; align-items: center; gap: 12px; }
+.batch-progress .bar-track {
+  flex: 1;
+  height: 6px;
+  background: #2a2a36;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.batch-progress .bar-fill {
+  height: 100%;
+  width: 0%;
+  background: #6c5ce7;
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+.batch-progress .bar-text {
+  font-size: 0.8rem;
+  color: #999;
+  white-space: nowrap;
+}
 </style>
 </head>
 <body>
 <div class="container">
+
+  <div class="batch-progress" id="batchProgressBar">
+    <div class="bar-track"><div class="bar-fill"></div></div>
+    <div class="bar-text"></div>
+  </div>
 
   <!-- ═══════ MENU ═══════ -->
   <div class="view active" id="menu-view">
@@ -188,6 +224,11 @@ body {
         <div class="card-icon">&#128396;</div>
         <div class="card-title">PNG &rarr; JPEG</div>
         <div class="card-desc">Convert .png files to JPEG. Handles transparency (fills white background), quality &amp; resize.</div>
+      </div>
+      <div class="menu-card" data-view="pdf2img-view">
+        <div class="card-icon">&#128196;</div>
+        <div class="card-title">PDF &rarr; Image</div>
+        <div class="card-desc">Convert PDF pages to JPEG or PNG. Choose scale, quality, and resize options. Each page becomes a separate image.</div>
       </div>
     </div>
   </div>
@@ -331,6 +372,60 @@ body {
     </div>
   </div>
 
+  <!-- ═══════ PDF → Image ═══════ -->
+  <div class="view" id="pdf2img-view">
+    <div class="tool-header">
+      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <h1>PDF &rarr; Image</h1>
+    </div>
+
+    <div class="settings">
+      <div class="setting-group">
+        <label>Format</label>
+        <select id="p2iFormat">
+          <option value="jpeg">JPEG</option>
+          <option value="png">PNG</option>
+        </select>
+      </div>
+      <div class="setting-group" id="p2iQualityGroup">
+        <label>Quality <span class="val" id="p2iQVal">85%</span></label>
+        <input type="range" id="p2iQuality" min="10" max="100" value="85" step="1">
+      </div>
+      <div class="setting-group">
+        <label>Scale</label>
+        <select id="p2iScale">
+          <option value="1">1x</option>
+          <option value="1.5">1.5x</option>
+          <option value="2" selected>2x</option>
+          <option value="3">3x</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>Max Width (px)</label>
+        <input type="number" id="p2iMaxW" min="1" placeholder="Original">
+      </div>
+      <div class="setting-group">
+        <label>Max Height (px)</label>
+        <input type="number" id="p2iMaxH" min="1" placeholder="Original">
+      </div>
+    </div>
+
+    <div class="dropzone" id="p2iDropzone">
+      <div class="dropzone-icon">&#128196;</div>
+      <p>Drag &amp; drop .pdf files here</p>
+      <p class="hint">or click to browse. Each page becomes a separate image.</p>
+    </div>
+    <input type="file" id="p2iInput" accept=".pdf" multiple style="display:none">
+
+    <div class="queue" id="p2iQueue"><div class="empty">No files added yet</div></div>
+
+    <div class="batch" id="p2iBatch" style="display:none">
+      <button class="btn" id="p2iConvertAll">Convert All</button>
+      <button class="btn btn-secondary" id="p2iDownloadAll" disabled>Download All as ZIP</button>
+      <button class="btn btn-danger" id="p2iClear">Clear All</button>
+    </div>
+  </div>
+
   <div class="overlay" id="overlay">
     <div class="spinner"></div>
     <p id="overlayText">Processing&hellip;</p>
@@ -345,6 +440,10 @@ body {
   function showView(name) {
     document.querySelectorAll('.view').forEach(function (v) { v.classList.remove('active'); });
     document.getElementById(name).classList.add('active');
+    var hash = name.replace('-view', '');
+    if (location.hash.replace('#', '') !== hash) {
+      history.replaceState(null, '', '#' + hash);
+    }
   }
 
   document.addEventListener('click', function (e) {
@@ -370,6 +469,22 @@ body {
     document.getElementById('overlay').classList.add('active');
   }
   function hideOverlay() { document.getElementById('overlay').classList.remove('active'); }
+
+  function showBatchProgress(done, total) {
+    var bar = document.getElementById('batchProgressBar');
+    if (!bar) return;
+    bar.classList.add('visible');
+    var pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    bar.querySelector('.bar-fill').style.width = pct + '%';
+    bar.querySelector('.bar-text').textContent = 'Converting ' + done + ' of ' + total;
+  }
+
+  function hideBatchProgress() {
+    var bar = document.getElementById('batchProgressBar');
+    if (!bar) return;
+    bar.classList.remove('visible');
+    bar.querySelector('.bar-fill').style.width = '0%';
+  }
 
   /* ── dropzone helpers ── */
   function bindDropzone(dz, input, cb) {
@@ -471,10 +586,15 @@ body {
     }
 
     async function convertAll() {
+      var total = files.length;
+      var done = files.filter(function (f) { return f.status === 'done'; }).length;
+      showBatchProgress(done, total);
       for (var i = 0; i < files.length; i++) {
         if (files[i].status === 'done' || files[i].status === 'processing') continue;
         try { await convertOne(files[i]); } catch (e) { files[i].status = 'error'; files[i].error = e.message; render(); }
+        showBatchProgress(files.filter(function (f) { return f.status === 'done' || f.status === 'error'; }).length, total);
       }
+      hideBatchProgress();
     }
 
     async function downloadZip() {
@@ -641,6 +761,7 @@ body {
       var pageNum = 0;
 
       showOverlay('Generating PDF (' + files.length + ' page' + (files.length > 1 ? 's' : '') + ')\u2026');
+      showBatchProgress(0, files.length);
 
       try {
         for (var i = 0; i < files.length; i++) {
@@ -695,6 +816,7 @@ body {
 
           doc.addImage(f.fullDataUrl, 'JPEG', x, y, drawW, drawH);
           pageNum++;
+          showBatchProgress(pageNum, files.length);
         }
 
         if (doc && pageNum > 0) {
@@ -706,6 +828,7 @@ body {
       } catch (e) {
         alert('Error generating PDF: ' + e.message);
       } finally {
+        hideBatchProgress();
         hideOverlay();
       }
     }
@@ -855,10 +978,15 @@ body {
     }
 
     async function convertAll() {
+      var total = files.length;
+      var done = files.filter(function (f) { return f.status === 'done'; }).length;
+      showBatchProgress(done, total);
       for (var i = 0; i < files.length; i++) {
         if (files[i].status === 'done' || files[i].status === 'processing') continue;
         try { await convertOne(files[i]); } catch (e) { files[i].status = 'error'; files[i].error = e.message; render(); }
+        showBatchProgress(files.filter(function (f) { return f.status === 'done' || f.status === 'error'; }).length, total);
       }
+      hideBatchProgress();
     }
 
     async function downloadZip() {
@@ -897,6 +1025,271 @@ body {
     clearBtn.addEventListener('click', function () { files.length = 0; render(); });
     render();
   })();
+
+  /* ════════════════════════════════════════
+     PDF → Image
+     ════════════════════════════════════════ */
+  (function () {
+    if (typeof pdfjsLib !== 'undefined') {
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    var dropzone = document.getElementById('p2iDropzone');
+    var input = document.getElementById('p2iInput');
+    var queue = document.getElementById('p2iQueue');
+    var batchEl = document.getElementById('p2iBatch');
+    var formatSel = document.getElementById('p2iFormat');
+    var qualityGroup = document.getElementById('p2iQualityGroup');
+    var qInput = document.getElementById('p2iQuality');
+    var qVal = document.getElementById('p2iQVal');
+    var scaleSel = document.getElementById('p2iScale');
+    var mwInput = document.getElementById('p2iMaxW');
+    var mhInput = document.getElementById('p2iMaxH');
+    var convertAllBtn = document.getElementById('p2iConvertAll');
+    var downloadAllBtn = document.getElementById('p2iDownloadAll');
+    var clearBtn = document.getElementById('p2iClear');
+
+    var files = [];
+
+    formatSel.addEventListener('change', function () {
+      qualityGroup.style.display = formatSel.value === 'jpeg' ? '' : 'none';
+    });
+
+    qInput.addEventListener('input', function () { qVal.textContent = qInput.value + '%'; });
+
+    function updateUI() {
+      if (files.length === 0) { batchEl.style.display = 'none'; queue.innerHTML = '<div class="empty">No files added yet</div>'; return; }
+      batchEl.style.display = 'flex';
+      var doneCount = files.filter(function (f) { return f.status === 'done'; }).length;
+      var allDone = doneCount === files.length && doneCount > 0;
+      convertAllBtn.disabled = files.every(function (f) { return f.status === 'done' || f.status === 'processing'; });
+      downloadAllBtn.disabled = !allDone;
+      downloadAllBtn.textContent = 'Download All as ZIP (' + doneCount + ')';
+    }
+
+    function render() {
+      if (files.length === 0) { updateUI(); return; }
+      queue.innerHTML = files.map(function (f, idx) {
+        var thumb = f.thumbData || '';
+        var cls = f.status;
+        var st = f.status === 'pending' ? 'Pending' : f.status === 'processing' ? 'Processing\u2026' : f.status === 'done' ? 'Converted' : f.status === 'error' ? 'Error' : '';
+        var prog = f.status === 'processing' && f.progress ? '<span class="progress">' + Math.round(f.progress) + '%</span>' : '';
+        var dims = f.width && f.height ? ' &middot; ' + f.width + ' x ' + f.height + ' px' : '';
+        var act = '';
+        if (f.status === 'done') act = '<button class="download-btn" data-p2dl="' + idx + '">Download</button>';
+        else if (f.status === 'error') act = '<button data-p2rt="' + idx + '">Retry</button>';
+        else act = '<button disabled>--</button>';
+        act += '<button data-p2rm="' + idx + '" title="Remove">&times;</button>';
+        return '<div class="file-card">' +
+          (thumb ? '<img class="thumbnail" src="' + thumb + '" alt="">' : '<div class="thumbnail"></div>') +
+          '<div class="info"><div class="name">' + escapeHtml(f.name) + '</div><div class="meta">' + formatBytes(f.size) + dims + '</div></div>' +
+          '<span class="status ' + cls + '">' + prog + st + '</span>' +
+          '<div class="actions">' + act + '</div>' +
+        '</div>';
+      }).join('');
+      updateUI();
+    }
+
+    function generateThumbnail(entry) {
+      entry.pdfDoc.getPage(entry.pageNum).then(function (page) {
+        var viewport = page.getViewport({ scale: 1 });
+        entry.width = viewport.width;
+        entry.height = viewport.height;
+
+        var s = 56;
+        var scale = Math.min(s / viewport.width, s / viewport.height);
+        var thumbViewport = page.getViewport({ scale: scale });
+
+        var tempCanvas = document.createElement('canvas');
+        tempCanvas.width = thumbViewport.width;
+        tempCanvas.height = thumbViewport.height;
+        var tempCtx = tempCanvas.getContext('2d');
+
+        page.render({ canvasContext: tempCtx, viewport: thumbViewport }).promise.then(function () {
+          var canvas = document.createElement('canvas');
+          canvas.width = s;
+          canvas.height = s;
+          var ctx = canvas.getContext('2d');
+          ctx.fillStyle = '#fff';
+          ctx.fillRect(0, 0, s, s);
+          ctx.drawImage(tempCanvas, (s - thumbViewport.width) / 2, (s - thumbViewport.height) / 2);
+          entry.thumbData = canvas.toDataURL('image/jpeg', 0.7);
+          render();
+        });
+      }).catch(function () { render(); });
+    }
+
+    function convertOne(entry) {
+      return new Promise(function (resolve, reject) {
+        if (typeof pdfjsLib === 'undefined') { reject(new Error('PDF.js not loaded')); return; }
+        entry.status = 'processing'; entry.progress = 0; render();
+
+        entry.pdfDoc.getPage(entry.pageNum).then(function (page) {
+          entry.progress = 30; render();
+          var scale = parseFloat(scaleSel.value);
+          var viewport = page.getViewport({ scale: scale });
+
+          var fw = viewport.width, fh = viewport.height;
+          var mw = parseInt(mwInput.value, 10) || 0;
+          var mh = parseInt(mhInput.value, 10) || 0;
+          if (mw > 0 && fw > mw) { fh = Math.round(fh * (mw / fw)); fw = mw; }
+          if (mh > 0 && fh > mh) { fw = Math.round(fw * (mh / fh)); fh = mh; }
+
+          entry.progress = 50; render();
+
+          var renderCanvas = document.createElement('canvas');
+          renderCanvas.width = viewport.width;
+          renderCanvas.height = viewport.height;
+          var renderCtx = renderCanvas.getContext('2d');
+
+          page.render({ canvasContext: renderCtx, viewport: viewport }).promise.then(function () {
+            entry.progress = 80; render();
+
+            var finalCanvas;
+            if (fw !== viewport.width || fh !== viewport.height) {
+              finalCanvas = document.createElement('canvas');
+              finalCanvas.width = fw;
+              finalCanvas.height = fh;
+              var finalCtx = finalCanvas.getContext('2d');
+              finalCtx.drawImage(renderCanvas, 0, 0, fw, fh);
+            } else {
+              finalCanvas = renderCanvas;
+            }
+
+            entry.progress = 90; render();
+
+            var format = formatSel.value;
+            var mimeType = format === 'png' ? 'image/png' : 'image/jpeg';
+            var quality = format === 'png' ? undefined : parseFloat(qInput.value) / 100;
+            var ext = format === 'png' ? '.png' : '.jpg';
+            var baseName = entry.file.name.replace(/\.pdf$/i, '');
+            entry.outputName = baseName + '_page_' + entry.pageNum + ext;
+
+            finalCanvas.toBlob(function (blob) {
+              entry.output = blob;
+              entry.status = 'done';
+              entry.progress = 100;
+              render();
+              resolve();
+            }, mimeType, quality);
+          }).catch(function (e) { entry.status = 'error'; entry.error = 'Render failed: ' + e.message; render(); reject(e); });
+        }).catch(function (e) { entry.status = 'error'; entry.error = 'Failed to load page: ' + e.message; render(); reject(e); });
+      });
+    }
+
+    async function convertAll() {
+      var total = files.length;
+      var done = files.filter(function (f) { return f.status === 'done'; }).length;
+      showBatchProgress(done, total);
+      for (var i = 0; i < files.length; i++) {
+        if (files[i].status === 'done' || files[i].status === 'processing') continue;
+        try { await convertOne(files[i]); } catch (e) { /* error already set */ }
+        showBatchProgress(files.filter(function (f) { return f.status === 'done' || f.status === 'error'; }).length, total);
+      }
+      hideBatchProgress();
+    }
+
+    async function downloadZip() {
+      var done = files.filter(function (f) { return f.status === 'done' && f.output; });
+      if (!done.length) return;
+      downloadAllBtn.textContent = 'Generating ZIP\u2026'; downloadAllBtn.disabled = true;
+      var zip = new JSZip();
+      var names = {};
+      done.forEach(function (f) {
+        var n = f.outputName;
+        var ext = n.lastIndexOf('.');
+        var base = ext > -1 ? n.substring(0, ext) : n;
+        var suffix = ext > -1 ? n.substring(ext) : '';
+        var c = 1;
+        while (names[n]) { n = base + ' (' + (c++) + ')' + suffix; }
+        names[n] = true;
+        zip.file(n, f.output);
+      });
+      var blob = await zip.generateAsync({ type: 'blob' });
+      downloadBlob(blob, 'pdf-converted.zip'); render();
+    }
+
+    function addFiles(fileList) {
+      Array.from(fileList).forEach(function (file) {
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'pdf') return;
+        if (files.some(function (f) { return f.file && f.file.name === file.name && f.file.size === file.size; })) return;
+
+        var reader = new FileReader();
+        reader.onload = function () {
+          var loadingTask = pdfjsLib.getDocument({ data: reader.result });
+          loadingTask.promise.then(function (pdf) {
+            var baseName = file.name.replace(/\.pdf$/i, '');
+            var pageCount = pdf.numPages;
+            var newEntries = [];
+            for (var i = 1; i <= pageCount; i++) {
+              newEntries.push({
+                file: file,
+                name: baseName + ' \u2014 Page ' + i,
+                size: file.size,
+                status: 'pending',
+                output: null,
+                outputName: null,
+                thumbData: null,
+                progress: 0,
+                error: null,
+                pageNum: i,
+                pageCount: pageCount,
+                pdfDoc: pdf,
+                width: null,
+                height: null
+              });
+            }
+            files = files.concat(newEntries);
+            render();
+            newEntries.forEach(function (e) { generateThumbnail(e); });
+          }).catch(function (e) {
+            files.push({
+              file: file, name: file.name, size: file.size, status: 'error',
+              output: null, outputName: null, thumbData: null, progress: 0,
+              error: 'Failed to load PDF: ' + e.message,
+              pageNum: null, pageCount: null, pdfDoc: null, width: null, height: null
+            });
+            render();
+          });
+        };
+        reader.onerror = function () {
+          files.push({
+            file: file, name: file.name, size: file.size, status: 'error',
+            output: null, outputName: null, thumbData: null, progress: 0,
+            error: 'Failed to read file',
+            pageNum: null, pageCount: null, pdfDoc: null, width: null, height: null
+          });
+          render();
+        };
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    bindDropzone(dropzone, input, addFiles);
+
+    queue.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var idx = parseInt(b.getAttribute('data-p2dl') || b.getAttribute('data-p2rt') || b.getAttribute('data-p2rm'), 10);
+      if (b.hasAttribute('data-p2dl')) { var f = files[idx]; if (f.output) downloadBlob(f.output, f.outputName); }
+      else if (b.hasAttribute('data-p2rt')) { files[idx].status = 'pending'; files[idx].progress = 0; render(); }
+      else if (b.hasAttribute('data-p2rm')) { files.splice(idx, 1); render(); }
+    });
+
+    convertAllBtn.addEventListener('click', convertAll);
+    downloadAllBtn.addEventListener('click', downloadZip);
+    clearBtn.addEventListener('click', function () { files.length = 0; render(); });
+    render();
+  })();
+
+  /* ── Hash-based view routing ── */
+  var VIEW_HASH_MAP = { menu: 'menu-view', jfif: 'jfif-view', pdf: 'pdf-view', png: 'png-view', pdf2img: 'pdf2img-view' };
+  function syncViewFromHash() {
+    var hash = (location.hash || '#menu').replace('#', '');
+    showView(VIEW_HASH_MAP[hash] || 'menu-view');
+  }
+  window.addEventListener('hashchange', syncViewFromHash);
+  syncViewFromHash();
 
 })();
 </script>
