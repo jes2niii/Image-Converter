@@ -52,21 +52,13 @@ body {
   background: #1e1e2a;
   transform: translateY(-2px);
 }
-.menu-card:hover::after {
-  content: '\2192';
-  position: absolute;
-  right: 18px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6c5ce7;
-  font-size: 1.4rem;
-  animation: slideIn 0.15s ease-out;
-}
-@keyframes slideIn {
-  from { opacity: 0; transform: translate(4px, -50%); }
-  to { opacity: 1; transform: translate(0, -50%); }
-}
 .menu-card .card-icon { font-size: 1.7rem; margin-bottom: 8px; display: block; }
+.menu-card .card-icon svg, .dropzone-icon svg, .back-btn svg, .order-btn svg, .data-pprot svg, .drag-handle svg, .page-actions svg {
+  width: 1em;
+  height: 1em;
+  fill: currentColor;
+  vertical-align: middle;
+}
 .menu-card .card-title { font-size: 1.05rem; font-weight: 600; color: #fff; padding-right: 24px; }
 .menu-card .card-desc { font-size: 0.82rem; color: #888; margin-top: 4px; line-height: 1.4; }
 
@@ -382,6 +374,11 @@ body {
   border-radius: 5px;
   font-size: 0.75rem;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.page-tile .page-actions button svg { width: 12px; height: 12px; fill: currentColor; }
 }
 .page-tile .page-actions button:hover { background: #3a3a46; }
 .page-tile .page-actions button.danger { color: #e06c6c; border-color: #5a2a2a; }
@@ -452,43 +449,43 @@ body {
     <div class="menu-cards">
       <div class="menu-card" data-view="image-view">
         <div class="card-badge cat-image">Image</div>
-        <div class="card-icon">&#128444;</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
         <div class="card-title">Image Converter</div>
         <div class="card-desc">Convert between JPG, PNG, WebP, JFIF, BMP, GIF, HEIC. Quality &amp; resize.</div>
       </div>
       <div class="menu-card" data-view="pdf-view">
         <div class="card-badge cat-pdf">PDF</div>
-        <div class="card-icon">&#128444;</div>
-        <div class="card-title">Image &rarr; PDF</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm6.5 8L11 13.5 8.5 17H7l4-5 3 4 2-2.5 3 3.5h-1.5z"/></svg></div>
+        <div class="card-title">Image to PDF</div>
         <div class="card-desc">Combine .jpg / .png / .webp files into a single PDF. Choose page size, orientation, and reorder pages.</div>
       </div>
       <div class="menu-card" data-view="pdf-tools-view">
         <div class="card-badge cat-pdf">PDF</div>
-        <div class="card-icon">&#128194;</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg></div>
         <div class="card-title">PDF Tools</div>
         <div class="card-desc">Merge multiple PDFs into one, or compress a PDF by lowering image quality/DPI.</div>
       </div>
       <div class="menu-card" data-view="pdf2img-view">
         <div class="card-badge cat-pdf">PDF</div>
-        <div class="card-icon">&#128228;</div>
-        <div class="card-title">PDF &rarr; Image</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg></div>
+        <div class="card-title">PDF to Image</div>
         <div class="card-desc">Convert PDF pages to JPEG or PNG. Choose scale, quality, and resize options. Each page becomes a separate image.</div>
       </div>
       <div class="menu-card" data-view="pdf-pages-view">
         <div class="card-badge cat-pdf">PDF</div>
-        <div class="card-icon">&#9986;&#65038;</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88" stroke="currentColor" stroke-width="2"/><line x1="14.47" y1="14.48" x2="20" y2="20" stroke="currentColor" stroke-width="2"/><line x1="8.12" y1="8.12" x2="12" y2="12" stroke="currentColor" stroke-width="2"/></svg></div>
         <div class="card-title">Edit PDF Pages</div>
         <div class="card-desc">Split, extract, rotate, or delete pages from a PDF. Visual thumbnail grid with per-page controls.</div>
       </div>
       <div class="menu-card" data-view="palette-view">
         <div class="card-badge cat-utils">Utility</div>
-        <div class="card-icon">&#127912;</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10a2.5 2.5 0 0 0 2.5-2.5c0-.61-.23-1.2-.64-1.67-.08-.1-.13-.21-.13-.33a.5.5 0 0 1 .5-.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm5.5 12c-.83 0-1.5-.67-1.5-1.5S16.67 11 17.5 11s1.5.67 1.5 1.5S18.33 14 17.5 14zm-3-4c-.83 0-1.5-.67-1.5-1.5S13.67 7 14.5 7s1.5.67 1.5 1.5S15.33 10 14.5 10zm-5 0c-.83 0-1.5-.67-1.5-1.5S8.67 7 9.5 7s1.5.67 1.5 1.5S10.33 10 9.5 10zm-3 4c-.83 0-1.5-.67-1.5-1.5S5.67 11 6.5 11s1.5.67 1.5 1.5S7.33 14 6.5 14z"/></svg></div>
         <div class="card-title">Color Palette</div>
         <div class="card-desc">Extract the dominant colors from an image. Download as CSS variables or a swatch image.</div>
       </div>
       <div class="menu-card" data-view="exif-view">
         <div class="card-badge cat-utils">Utility</div>
-        <div class="card-icon">&#128247;</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/><circle cx="12" cy="12" r="3"/></svg></div>
         <div class="card-title">EXIF &amp; Privacy</div>
         <div class="card-desc">View photo metadata (camera, GPS, date) and download a clean copy with all metadata stripped.</div>
       </div>
@@ -498,7 +495,7 @@ body {
   <!-- ═══════ Image Converter ═══════ -->
   <div class="view" id="image-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <h1>Image Converter</h1>
       <span class="tool-header-cat cat-image">Image</span>
     </div>
@@ -539,7 +536,7 @@ body {
     </div>
 
     <div class="dropzone" id="imgDropzone">
-      <div class="dropzone-icon">&#128444;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M21 19V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></div>
       <p>Drag &amp; drop image files here</p>
       <p class="hint">Multiple files supported.</p>
       <div class="format-chips">
@@ -563,11 +560,11 @@ body {
     </div>
   </div>
 
-  <!-- ═══════ JPEG → PDF ═══════ -->
+  <!-- ═══════ JPEG to PDF ═══════ -->
   <div class="view" id="pdf-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
-      <h1>Image &rarr; PDF</h1>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <h1>Image to PDF</h1>
       <span class="tool-header-cat cat-pdf">PDF</span>
     </div>
 
@@ -613,7 +610,7 @@ body {
     </div>
 
     <div class="dropzone" id="pdfDropzone">
-      <div class="dropzone-icon">&#128444;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2zM8 17H6v-2h2v2zm0-4H6v-2h2v2zm0-4H6V7h2v2zm6.5 8L11 13.5 8.5 17H7l4-5 3 4 2-2.5 3 3.5h-1.5z"/></svg></div>
       <p>Drag &amp; drop image files here</p>
       <p class="hint">Multiple files supported. Drag to reorder.</p>
       <div class="format-chips">
@@ -635,7 +632,7 @@ body {
   <!-- ═══════ PDF Tools (Merge / Compress) ═══════ -->
   <div class="view" id="pdf-tools-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <h1>PDF Tools</h1>
       <span class="tool-header-cat cat-pdf">PDF</span>
     </div>
@@ -664,7 +661,7 @@ body {
     </div>
 
     <div class="dropzone" id="ptDropzone">
-      <div class="dropzone-icon">&#128194;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M10 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2z"/></svg></div>
       <p>Drag &amp; drop PDF files here</p>
       <p class="hint">Drop multiple to merge. For Compress, only the first file is used.</p>
       <div class="format-chips">
@@ -681,11 +678,11 @@ body {
     </div>
   </div>
 
-  <!-- ═══════ PDF → Image ═══════ -->
+  <!-- ═══════ PDF to Image ═══════ -->
   <div class="view" id="pdf2img-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
-      <h1>PDF &rarr; Image</h1>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <h1>PDF to Image</h1>
       <span class="tool-header-cat cat-pdf">PDF</span>
     </div>
 
@@ -721,7 +718,7 @@ body {
     </div>
 
     <div class="dropzone" id="p2iDropzone">
-      <div class="dropzone-icon">&#128196;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg></div>
       <p>Drag &amp; drop PDF files here</p>
       <p class="hint">Each page becomes a separate image.</p>
       <div class="format-chips">
@@ -742,13 +739,13 @@ body {
   <!-- ═══════ Edit PDF Pages ═══════ -->
   <div class="view" id="pdf-pages-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <h1>Edit PDF Pages</h1>
       <span class="tool-header-cat cat-pdf">PDF</span>
     </div>
 
     <div class="dropzone" id="ppDropzone">
-      <div class="dropzone-icon">&#128196;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg></div>
       <p>Drag &amp; drop a PDF file here</p>
       <p class="hint">Click a page to select. Use the buttons to rotate, delete, or extract.</p>
       <div class="format-chips">
@@ -787,7 +784,7 @@ body {
   <!-- ═══════ Color Palette ═══════ -->
   <div class="view" id="palette-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <h1>Color Palette</h1>
       <span class="tool-header-cat cat-utils">Utility</span>
     </div>
@@ -806,7 +803,7 @@ body {
     </div>
 
     <div class="dropzone" id="palDropzone">
-      <div class="dropzone-icon">&#127912;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M12 2C6.49 2 2 6.49 2 12s4.49 10 10 10a2.5 2.5 0 0 0 2.5-2.5c0-.61-.23-1.2-.64-1.67-.08-.1-.13-.21-.13-.33a.5.5 0 0 1 .5-.5H16c3.31 0 6-2.69 6-6 0-4.96-4.49-9-10-9zm-5.5 9a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zm3-4A1.5 1.5 0 1 1 9.5 5 1.5 1.5 0 0 1 9.5 7zm5 0A1.5 1.5 0 1 1 14.5 5 1.5 1.5 0 0 1 14.5 7zm3 4a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg></div>
       <p>Drag &amp; drop an image to extract its colors</p>
       <p class="hint">Any browser-supported image format.</p>
       <div class="format-chips">
@@ -835,13 +832,13 @@ body {
   <!-- ═══════ EXIF & Privacy ═══════ -->
   <div class="view" id="exif-view">
     <div class="tool-header">
-      <button class="back-btn" data-view="menu-view">&larr;</button>
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
       <h1>EXIF &amp; Privacy</h1>
       <span class="tool-header-cat cat-utils">Utility</span>
     </div>
 
     <div class="dropzone" id="exifDropzone">
-      <div class="dropzone-icon">&#128247;</div>
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 1 0-10 5 5 0 0 1 0 10z"/><circle cx="12" cy="12" r="3" fill="currentColor"/></svg></div>
       <p>Drag &amp; drop a photo to view its metadata</p>
       <p class="hint">Shows camera, GPS, date, and more.</p>
       <div class="format-chips">
@@ -1169,13 +1166,13 @@ body {
         if (f.thumbData) { thumb = f.thumbData; }
         var dims = f.width ? f.width + ' x ' + f.height + ' px' : 'Loading\u2026';
         return '<div class="file-card" data-pidx="' + idx + '">' +
-          '<span class="drag-handle" title="Drag to reorder">&#x290D;</span>' +
+          '<span class="drag-handle" title="Drag to reorder"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>' +
           (thumb ? '<img class="thumbnail" src="' + thumb + '" alt="">' : '<div class="thumbnail"></div>') +
           '<div class="info"><div class="name">' + escapeHtml(f.name) + '</div><div class="meta">' + formatBytes(f.size) + ' &middot; ' + dims + '</div></div>' +
           '<div class="actions">' +
-            '<button class="order-btn" data-pup="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '>&#9650;</button>' +
-            '<button class="order-btn" data-pdn="' + idx + '" title="Move down" ' + (idx === files.length - 1 ? 'disabled' : '') + '>&#9660;</button>' +
-            '<button data-prm="' + idx + '" title="Remove">&times;</button>' +
+            '<button class="order-btn" data-pup="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg></button>' +
+            '<button class="order-btn" data-pdn="' + idx + '" title="Move down" ' + (idx === files.length - 1 ? 'disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></button>' +
+            '<button data-prm="' + idx + '" title="Remove"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1678,13 +1675,13 @@ body {
       }
       queue.innerHTML = files.map(function (f, idx) {
         return '<div class="file-card" data-ptidx="' + idx + '">' +
-          '<span class="drag-handle" title="Drag to reorder">&#x290D;</span>' +
-          '<div class="thumbnail" style="display:flex;align-items:center;justify-content:center;font-size:1.5rem;color:#666;">&#128196;</div>' +
+          '<span class="drag-handle" title="Drag to reorder"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>' +
+          '<div class="thumbnail" style="display:flex;align-items:center;justify-content:center;color:#666;"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13z"/></svg></div>' +
           '<div class="info"><div class="name">' + escapeHtml(f.name) + '</div><div class="meta">' + formatBytes(f.size) + '</div></div>' +
           '<div class="actions">' +
-            '<button class="order-btn" data-ptup="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '>&#9650;</button>' +
-            '<button class="order-btn" data-ptdn="' + idx + '" title="Move down" ' + (idx === files.length - 1 ? 'disabled' : '') + '>&#9660;</button>' +
-            '<button data-ptrm="' + idx + '" title="Remove">&times;</button>' +
+            '<button class="order-btn" data-ptup="' + idx + '" title="Move up" ' + (idx === 0 ? 'disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M7 14l5-5 5 5z"/></svg></button>' +
+            '<button class="order-btn" data-ptdn="' + idx + '" title="Move down" ' + (idx === files.length - 1 ? 'disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg></button>' +
+            '<button data-ptrm="' + idx + '" title="Remove"><svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button>' +
           '</div>' +
         '</div>';
       }).join('');
@@ -1902,12 +1899,12 @@ body {
         var canvasHtml = p.thumbCanvas ? '<div class="page-canvas-wrap"><img src="' + p.thumbCanvas + '" alt=""></div>' : '<div class="page-canvas-wrap"></div>';
         var movedCls = (p.index !== p.originalIndex) ? ' moved' : '';
         return '<div class="page-tile' + (p.selected ? ' selected' : '') + (p.deleted ? ' deleted' : '') + '" data-ppidx="' + p.index + '">' +
-          '<span class="drag-handle" title="Drag to reorder">&#8942;&#8942;</span>' +
+          '<span class="drag-handle" title="Drag to reorder"><svg viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></svg></span>' +
           canvasHtml +
-          '<div class="page-num' + movedCls + '">Page ' + (p.originalIndex + 1) + (p.deleted ? ' (deleted)' : '') + (p.rotation ? ' \u21bb' + p.rotation : '') + '</div>' +
+          '<div class="page-num' + movedCls + '">Page ' + (p.originalIndex + 1) + (p.deleted ? ' (deleted)' : '') + (p.rotation ? ' \21BB' + p.rotation : '') + '</div>' +
           '<div class="page-actions">' +
-            '<button data-pprot="' + p.index + '" title="Rotate 90\u00b0" ' + (p.deleted ? 'disabled' : '') + '>\u21bb</button>' +
-            '<button data-ppdel="' + p.index + '" title="Toggle delete" class="' + (p.deleted ? 'danger' : '') + '">' + (p.deleted ? 'Restore' : 'Delete') + '</button>' +
+            '<button data-pprot="' + p.index + '" title="Rotate 90\u00b0" ' + (p.deleted ? 'disabled' : '') + '><svg viewBox="0 0 24 24"><path d="M12 6V4l-4 4 4 4V8c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46A7.93 7.93 0 0 0 20 14c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 9.74A7.93 7.93 0 0 0 4 14c0 4.42 3.58 8 8 8v-2z"/></svg></button>' +
+            '<button data-ppdel="' + p.index + '" title="Toggle delete" class="' + (p.deleted ? 'danger' : '') + '">' + (p.deleted ? '<svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v-2z"/></svg> Restore' : '<svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg> Delete') + '</button>' +
           '</div>' +
         '</div>';
       }).join('');
