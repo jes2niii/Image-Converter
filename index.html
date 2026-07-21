@@ -10,6 +10,8 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/exifr@7.1.3/dist/full.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.4.0/dist/xlsx-populate.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -488,6 +490,12 @@ body {
         <div class="card-title">EXIF &amp; Privacy</div>
         <div class="card-desc">View photo metadata (camera, GPS, date) and download a clean copy with all metadata stripped.</div>
       </div>
+      <div class="menu-card" data-view="excel2pdf-view">
+        <div class="card-badge cat-pdf">PDF</div>
+        <div class="card-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-1.5 4h-2v6h2v-2h1.5c1.38 0 2.5-1.12 2.5-2.5S12.88 12 11.5 12h-1V11h2v1zm-4 6H6v-2h2v-1H6v-2h2v-1H5v6h2.5v-1zm6.5-3.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5h-1.5v3H14z"/></svg></div>
+        <div class="card-title">Excel to PDF</div>
+        <div class="card-desc">Convert .xlsx, .xls, and .csv spreadsheets to PDF. Embedded images and charts are preserved.</div>
+      </div>
     </div>
   </div>
 
@@ -860,6 +868,38 @@ body {
     </div>
   </div>
 
+  <!-- ═══════ Excel to PDF ═══════ -->
+  <div class="view" id="excel2pdf-view">
+    <div class="tool-header">
+      <button class="back-btn" data-view="menu-view"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+      <h1>Excel to PDF</h1>
+      <span class="tool-header-cat cat-pdf">PDF</span>
+    </div>
+
+    <div style="font-size: 0.78rem; color: #777; margin-bottom: 12px;">
+      Each input file produces its own PDF using its own page size, orientation, margins, and fonts. Sheets can be chosen individually after upload. Embedded images are preserved; charts are detected and labeled.
+    </div>
+
+    <div class="dropzone" id="x2pDropzone">
+      <div class="dropzone-icon"><svg viewBox="0 0 24 24" width="40" height="40"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm-1 7V3.5L18.5 9H13zm-1.5 4h-2v6h2v-2h1.5c1.38 0 2.5-1.12 2.5-2.5S12.88 12 11.5 12h-1V11h2v1zm-4 6H6v-2h2v-1H6v-2h2v-1H5v6h2.5v-1zm6.5-3.5c.83 0 1.5-.67 1.5-1.5s-.67-1.5-1.5-1.5h-1.5v3H14z"/></svg></div>
+      <p>Drag &amp; drop spreadsheet files here</p>
+      <p class="hint">Multiple files supported. Each becomes its own PDF.</p>
+      <div class="format-chips">
+        <span class="format-chip">XLSX</span>
+        <span class="format-chip">XLS</span>
+        <span class="format-chip">CSV</span>
+      </div>
+    </div>
+    <input type="file" id="x2pInput" accept=".xlsx,.xls,.csv" multiple style="display:none">
+
+    <div class="queue" id="x2pQueue"><div class="empty">No files added yet</div></div>
+
+    <div class="batch" id="x2pBatch" style="display:none">
+      <button class="btn" id="x2pConvertAll">Convert All to PDFs</button>
+      <button class="btn btn-danger" id="x2pClear">Clear All</button>
+    </div>
+  </div>
+
   <div class="overlay" id="overlay">
     <div class="spinner"></div>
     <p id="overlayText">Processing&hellip;</p>
@@ -1218,7 +1258,7 @@ body {
     function addFiles(fileList) {
       Array.from(fileList).forEach(function (file) {
         var ext = file.name.split('.').pop().toLowerCase();
-        if (ext !== 'jpg' && ext !== 'jpeg') return;
+        if (ext !== 'jpg' && ext !== 'jpeg' && ext !== 'png' && ext !== 'webp') return;
         if (files.some(function (f) { return f.file.name === file.name && f.file.size === file.size; })) return;
         var entry = { file: file, name: file.name, size: file.size, width: null, height: null, objectUrl: null, thumbData: null, imageObj: null, error: null };
         files.push(entry);
@@ -1301,7 +1341,10 @@ body {
           var x = (pw - drawW) / 2;
           var y = (ph - drawH) / 2;
 
-          doc.addImage(f.fullDataUrl, 'JPEG', x, y, drawW, drawH);
+          // Detect image format for jsPDF (it must match the data URL MIME type)
+          var imgExt = f.name.split('.').pop().toLowerCase();
+          var imgFormat = (imgExt === 'png') ? 'PNG' : (imgExt === 'webp') ? 'WEBP' : 'JPEG';
+          doc.addImage(f.fullDataUrl, imgFormat, x, y, drawW, drawH);
           pageNum++;
           showBatchProgress(pageNum, files.length);
         }
@@ -1322,14 +1365,30 @@ body {
 
     function loadImageDataUrl(file, fallbackUrl) {
       return new Promise(function (resolve) {
+        var ext = (file && file.name ? file.name.split('.').pop() : '').toLowerCase();
+        var outMime = (ext === 'png') ? 'image/png'
+                    : (ext === 'webp') ? 'image/webp'
+                    : 'image/jpeg';
         if (fallbackUrl) {
           var img = new Image(); img.onload = function () {
             var W = img.width, H = img.height;
             var MAX = 4000;
             if (W > MAX || H > MAX) { var s = Math.min(MAX / W, MAX / H); W = Math.round(W * s); H = Math.round(H * s); }
             var c = document.createElement('canvas'); c.width = W; c.height = H;
-            c.getContext('2d').drawImage(img, 0, 0, W, H);
-            resolve(c.toDataURL('image/jpeg', 0.92));
+            var ctx = c.getContext('2d');
+            // For PNG, fill background white so transparency becomes opaque on print
+            if (outMime === 'image/jpeg') {
+              ctx.fillStyle = '#fff';
+              ctx.fillRect(0, 0, W, H);
+            }
+            ctx.drawImage(img, 0, 0, W, H);
+            var quality = (outMime === 'image/jpeg') ? 0.92 : undefined;
+            try {
+              resolve(c.toDataURL(outMime, quality));
+            } catch (e) {
+              // Some browsers throw for unsupported webp/jpeg combinations; fall back
+              try { resolve(c.toDataURL('image/png')); } catch (e2) { resolve(null); }
+            }
           };
           img.onerror = function () { resolve(null); };
           img.src = fallbackUrl;
@@ -2292,6 +2351,609 @@ body {
     clearBtn.addEventListener('click', clearAll);
   })();
 
+  /* ════════════════════════════════════════
+     Excel to PDF (XLSX / XLS / CSV → PDF)
+     Approach: HTML snapshot via html2canvas
+     ════════════════════════════════════════ */
+  (function () {
+    if (typeof XlsxPopulate === 'undefined') {
+      console.warn('xlsx-populate library not loaded; Excel to PDF tool will not work.');
+    }
+    if (typeof html2canvas === 'undefined') {
+      console.warn('html2canvas library not loaded; Excel to PDF tool will not work.');
+    }
+
+    var dropzone = document.getElementById('x2pDropzone');
+    var input = document.getElementById('x2pInput');
+    var queue = document.getElementById('x2pQueue');
+    var batchEl = document.getElementById('x2pBatch');
+    var convertAllBtn = document.getElementById('x2pConvertAll');
+    var clearBtn = document.getElementById('x2pClear');
+
+    var files = [];
+
+    // Off-screen container for the rendered HTML
+    var renderHost = document.createElement('div');
+    renderHost.style.cssText = 'position:fixed;left:-99999px;top:0;background:#fff;z-index:-1;pointer-events:none;';
+    document.body.appendChild(renderHost);
+
+    function updateUI() {
+      if (files.length === 0) {
+        batchEl.style.display = 'none';
+        queue.innerHTML = '<div class="empty">No files added yet</div>';
+        return;
+      }
+      batchEl.style.display = 'flex';
+      convertAllBtn.disabled = files.every(function (f) {
+        return f.status === 'done' || f.status === 'processing' || f.status === 'error';
+      });
+    }
+
+    function render() {
+      if (files.length === 0) { updateUI(); return; }
+      queue.innerHTML = files.map(function (f, idx) {
+        var cls = f.status;
+        var st = f.status === 'pending' ? 'Pending' :
+                 f.status === 'parsing' ? 'Parsing\u2026' :
+                 f.status === 'ready' ? 'Ready' :
+                 f.status === 'processing' ? 'Converting\u2026' :
+                 f.status === 'done' ? 'Converted' :
+                 f.status === 'error' ? 'Error' : '';
+        var sheetInfo = '';
+        if (f.sheetNames && f.sheetNames.length) {
+          sheetInfo = f.sheetNames.length + ' sheet' + (f.sheetNames.length !== 1 ? 's' : '');
+        }
+        var sheetSelect = '';
+        if (f.status === 'ready' && f.sheetNames) {
+          var allSelected = f.selectedSheets.length === f.sheetNames.length;
+          sheetSelect =
+            '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;">' +
+            '<label style="font-size:0.75rem;color:#aaa;display:flex;align-items:center;gap:4px;">' +
+            '<input type="checkbox" data-x2p-tog="' + idx + '" ' + (allSelected ? 'checked' : '') + '> ' +
+            (allSelected ? 'All sheets' : f.selectedSheets.length + ' of ' + f.sheetNames.length + ' selected') +
+            '</label>' +
+            f.sheetNames.map(function (n) {
+              var checked = f.selectedSheets.indexOf(n) !== -1;
+              return '<label style="font-size:0.72rem;color:#ccc;display:flex;align-items:center;gap:3px;background:#15151c;padding:2px 6px;border-radius:4px;cursor:pointer;">' +
+                '<input type="checkbox" data-x2p-sheet="' + idx + '" data-sheet="' + escapeHtml(n) + '" ' + (checked ? 'checked' : '') + '> ' +
+                escapeHtml(n) +
+                '</label>';
+            }).join('') +
+            '</div>';
+        }
+        var act = '';
+        if (f.status === 'done' && f.outputBlob) {
+          act = '<button class="download-btn" data-x2p-dl="' + idx + '">Download PDF</button>';
+        } else if (f.status === 'ready') {
+          act = '<button class="download-btn" data-x2p-go="' + idx + '">Convert</button>';
+        } else if (f.status === 'error') {
+          act = '<button data-x2p-retry="' + idx + '">Retry</button>';
+        } else {
+          act = '<button disabled>--</button>';
+        }
+        act += '<button data-x2p-rm="' + idx + '" title="Remove">&times;</button>';
+        var meta = formatBytes(f.size);
+        if (sheetInfo) meta += ' &middot; ' + sheetInfo;
+        return '<div class="file-card">' +
+          '<div class="thumbnail" style="display:flex;align-items:center;justify-content:center;font-size:1.4rem;color:#6cce8e;background:#1f3a2a;">XLS</div>' +
+          '<div class="info">' +
+            '<div class="name">' + escapeHtml(f.name) + '</div>' +
+            '<div class="meta">' + meta + '</div>' +
+            sheetSelect +
+          '</div>' +
+          '<span class="status ' + cls + '">' + st + '</span>' +
+          '<div class="actions">' + act + '</div>' +
+        '</div>';
+      }).join('');
+      updateUI();
+    }
+
+    function addFiles(fileList) {
+      Array.from(fileList).forEach(function (file) {
+        var ext = file.name.split('.').pop().toLowerCase();
+        if (ext !== 'xlsx' && ext !== 'xls' && ext !== 'csv') return;
+        if (files.some(function (f) { return f.file.name === file.name && f.file.size === f.size; })) return;
+        var entry = {
+          file: file,
+          name: file.name,
+          size: file.size,
+          status: 'pending',
+          workbook: null,
+          sheetNames: null,
+          selectedSheets: [],
+          outputBlob: null,
+          outputName: null,
+          error: null
+        };
+        files.push(entry);
+        parseEntry(entry, files.length - 1);
+      });
+      render();
+    }
+
+    function readFileAsArrayBuffer(file) {
+      return new Promise(function (resolve, reject) {
+        var r = new FileReader();
+        r.onload = function () { resolve(new Uint8Array(r.result)); };
+        r.onerror = function () { reject(new Error('Failed to read file')); };
+        r.readAsArrayBuffer(file);
+      });
+    }
+
+    function parseEntry(entry) {
+      entry.status = 'parsing'; render();
+      readFileAsArrayBuffer(entry.file).then(function (data) {
+        if (typeof XlsxPopulate === 'undefined') {
+          entry.status = 'error';
+          entry.error = 'xlsx-populate library not loaded';
+          render();
+          return;
+        }
+        XlsxPopulate.fromDataAsync(data).then(function (workbook) {
+          entry.workbook = workbook;
+          entry.sheetNames = [];
+          try {
+            for (var s = 0; s < workbook.sheets().length; s++) {
+              var sh = workbook.sheet(s);
+              if (sh) entry.sheetNames.push(sh.name());
+            }
+          } catch (e) { /* ignore */ }
+          entry.selectedSheets = entry.sheetNames.slice();
+          entry.status = 'ready';
+          render();
+        }).catch(function (e) {
+          entry.status = 'error';
+          entry.error = e.message || 'Failed to parse spreadsheet';
+          render();
+        });
+      }).catch(function (e) {
+        entry.status = 'error';
+        entry.error = e.message;
+        render();
+      });
+    }
+
+    function removeEntry(idx) {
+      files.splice(idx, 1);
+      render();
+    }
+
+    function clearAll() {
+      files = [];
+      render();
+    }
+
+    // ─── Color helpers ──────────────────────────────────────────────
+    var THEME_PALETTE = {
+      0: [255, 255, 255], 1: [0, 0, 0], 2: [238, 236, 225], 3: [31, 73, 125],
+      4: [79, 129, 189], 5: [192, 80, 77], 6: [128, 100, 162], 7: [147, 169, 207],
+      8: [174, 192, 215], 9: [215, 227, 240],
+      lt1: [255, 255, 255], dk1: [0, 0, 0], lt2: [238, 236, 225], dk2: [31, 73, 125],
+      accent1: [79, 129, 189], accent2: [192, 80, 77], accent3: [155, 187, 89],
+      accent4: [128, 100, 162], accent5: [74, 172, 211], accent6: [243, 175, 0]
+    };
+    var INDEXED_PALETTE = [
+      [0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 255, 0], [0, 0, 255],
+      [255, 255, 0], [255, 0, 255], [0, 255, 255],
+      [0, 0, 0], [255, 255, 255], [255, 0, 0], [0, 255, 0], [0, 0, 255],
+      [255, 255, 0], [255, 0, 255], [0, 255, 255],
+      [128, 0, 0], [0, 128, 0], [0, 0, 128], [128, 128, 0],
+      [128, 0, 128], [0, 128, 128], [192, 192, 192],
+      [128, 128, 128], [153, 153, 255], [153, 51, 102],
+      [255, 255, 204], [204, 255, 255], [102, 0, 102],
+      [255, 128, 128], [0, 102, 204], [204, 204, 255],
+      [0, 0, 128], [255, 0, 255], [255, 255, 0], [0, 255, 255]
+    ];
+
+    function colorToCss(c) {
+      if (!c) return null;
+      if (c.rgb) {
+        var s = String(c.rgb);
+        if (s.length === 8) s = s.substring(2);
+        if (s.length === 6) {
+          return '#' + s.toLowerCase();
+        }
+        return null;
+      }
+      if (c.theme !== undefined) {
+        var rgb = THEME_PALETTE[c.theme];
+        if (!rgb) rgb = [200, 200, 200];
+        var t = c.tint || 0;
+        if (t < 0) {
+          rgb = rgb.map(function (v) { return Math.round(v * (1 + t)); });
+        } else if (t > 0) {
+          rgb = rgb.map(function (v) { return Math.round(v + (255 - v) * t); });
+        }
+        return 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+      }
+      if (c.indexed !== undefined && c.indexed >= 0 && c.indexed < INDEXED_PALETTE.length) {
+        var ix = INDEXED_PALETTE[c.indexed];
+        return 'rgb(' + ix[0] + ',' + ix[1] + ',' + ix[2] + ')';
+      }
+      return null;
+    }
+
+    function safeStyle(cell, name, fallback) {
+      try { var v = cell.style(name); return (v === undefined || v === null) ? fallback : v; }
+      catch (e) { return fallback; }
+    }
+
+    function getBorderCss(cell, side) {
+      try {
+        var b = cell.style(side + 'Border');
+        if (!b || !b.style) return '';
+        var color = b.color ? colorToCss(b.color) : null;
+        var colorStr = color || '#000';
+        var width = b.style === 'thin' ? '1px' :
+                    b.style === 'medium' ? '2px' :
+                    b.style === 'thick' ? '3px' :
+                    b.style === 'hair' ? '0.5px' :
+                    b.style === 'dashed' ? '1px' :
+                    b.style === 'dotted' ? '1px' :
+                    b.style === 'double' ? '3px' : '1px';
+        var style = b.style === 'dashed' ? 'dashed' :
+                    b.style === 'dotted' ? 'dotted' :
+                    b.style === 'double' ? 'double' : 'solid';
+        return 'border-' + side + ': ' + width + ' ' + style + ' ' + colorStr + ';';
+      } catch (e) { return ''; }
+    }
+
+    // ─── Build styled HTML for a single sheet ────────────────────────
+    function buildSheetHtml(workbook, sheetName) {
+      var sheet = workbook.sheet(sheetName);
+      if (!sheet) return { html: '', width: 0, height: 0 };
+
+      var used = sheet.usedRange();
+      var startRow, endRow, startCol, endCol;
+      try {
+        if (used) {
+          startRow = used.startCell().rowNumber();
+          endRow = used.endCell().rowNumber();
+          startCol = used.startCell().columnNumber();
+          endCol = used.endCell().columnNumber();
+        } else {
+          startRow = 1; endRow = 1; startCol = 1; endCol = 1;
+        }
+      } catch (e) {
+        startRow = 1; endRow = 20; startCol = 1; endCol = 10;
+      }
+      if (endRow < startRow) endRow = startRow;
+      if (endCol < startCol) endCol = startCol;
+
+      // Column widths in pixels (Excel char-units * 7)
+      var colWidthsPx = [];
+      for (var c = startCol; c <= endCol; c++) {
+        var w = safeStyle(sheet, 'columnWidth', null);
+        var cw = (function () { try { return sheet.column(c).width(); } catch (e) { return null; } })();
+        if (cw) colWidthsPx.push(Math.max(20, cw * 7));
+        else colWidthsPx.push(64);
+      }
+
+      // Row heights in pixels (points * 96/72)
+      var rowHeightsPx = [];
+      for (var r = startRow; r <= endRow; r++) {
+        var rh = (function () { try { return sheet.row(r).height(); } catch (e) { return null; } })();
+        if (rh) rowHeightsPx.push(Math.max(15, rh * (96 / 72)));
+        else rowHeightsPx.push(20);
+      }
+
+      // Detect merges
+      var mergeMap = {}; // 'r,c' -> { startR, startC, endR, endC, isMaster }
+      var masters = []; // array of {r, c, sR, sC, eR, eC}
+      for (var rr = startRow; rr <= endRow; rr++) {
+        for (var cc = startCol; cc <= endCol; cc++) {
+          try {
+            var cell = sheet.cell(rr, cc);
+            if (!cell) continue;
+            var merged = cell.mergedCells();
+            if (merged && merged.length) {
+              var m = merged[0];
+              var sR = m.startCell().rowNumber();
+              var sC = m.startCell().columnNumber();
+              var eR = m.endCell().rowNumber();
+              var eC = m.endCell().columnNumber();
+              masters.push({ r: rr, c: cc, sR: sR, sC: sC, eR: eR, eC: eC });
+              for (var mr = sR; mr <= eR; mr++) {
+                for (var mc = sC; mc <= eC; mc++) {
+                  mergeMap[mr + ',' + mc] = {
+                    startR: sR, startC: sC, endR: eR, endC: eC,
+                    isMaster: (mr === rr && mc === cc)
+                  };
+                }
+              }
+            }
+          } catch (e) { /* ignore */ }
+        }
+      }
+
+      // Build HTML
+      var html = '<div class="x2p-sheet" data-sheet="' + escapeHtml(sheetName) + '" style="display:inline-block; background:#fff; color:#000; font-family: Calibri, Arial, sans-serif; font-size:11pt; line-height:1.15; padding:0; margin:0;">';
+      html += '<table style="border-collapse:collapse; border-spacing:0; padding:0; margin:0; table-layout:fixed;">';
+      html += '<colgroup>';
+      for (var ci = 0; ci < colWidthsPx.length; ci++) {
+        html += '<col style="width:' + Math.round(colWidthsPx[ci]) + 'px">';
+      }
+      html += '</colgroup><tbody>';
+
+      var slaveSet = {};
+      for (var key in mergeMap) {
+        if (!mergeMap[key].isMaster) slaveSet[key] = true;
+      }
+
+      for (var row = startRow; row <= endRow; row++) {
+        var rhPx = rowHeightsPx[row - startRow] || 20;
+        html += '<tr style="height:' + Math.round(rhPx) + 'px;">';
+        for (var col2 = startCol; col2 <= endCol; col2++) {
+          var sk = row + ',' + col2;
+          if (slaveSet[sk]) continue;
+          var cellObj = (function () { try { return sheet.cell(row, col2); } catch (e) { return null; } })();
+          var value = '';
+          if (cellObj) {
+            try { value = cellObj.displayValue(); } catch (e) { try { value = cellObj.value(); } catch (e2) { value = ''; } }
+          }
+          if (value === null || value === undefined) value = '';
+
+          // Build inline style
+          var style = 'padding: 1px 3px; vertical-align: middle; word-wrap: break-word; overflow-wrap: break-word;';
+          if (cellObj) {
+            var bold = safeStyle(cellObj, 'bold', false);
+            var italic = safeStyle(cellObj, 'italic', false);
+            var fontSize = safeStyle(cellObj, 'fontSize', null);
+            var fontFamily = safeStyle(cellObj, 'fontFamily', null);
+            var fontColor = safeStyle(cellObj, 'fontColor', null);
+            var fillColor = safeStyle(cellObj, 'fill', null);
+            var hAlign = safeStyle(cellObj, 'horizontalAlignment', null);
+            var vAlign = safeStyle(cellObj, 'verticalAlignment', null);
+            var wrapText = safeStyle(cellObj, 'wrapText', false);
+
+            if (bold) style += 'font-weight:bold;';
+            if (italic) style += 'font-style:italic;';
+            if (fontSize) style += 'font-size:' + fontSize + 'pt;';
+            if (fontFamily) style += 'font-family:' + fontFamily + ';';
+            var fc = colorToCss(fontColor);
+            if (fc) style += 'color:' + fc + ';';
+            var fillC = colorToCss(fillColor);
+            if (fillC) style += 'background-color:' + fillC + ';';
+            if (hAlign === 'center') style += 'text-align:center;';
+            else if (hAlign === 'right') style += 'text-align:right;';
+            else if (hAlign === 'left') style += 'text-align:left;';
+            if (vAlign === 'top') style += 'vertical-align:top;';
+            else if (vAlign === 'bottom') style += 'vertical-align:bottom;';
+            else if (vAlign === 'center') style += 'vertical-align:middle;';
+            if (wrapText) style += 'white-space:normal;';
+            style += getBorderCss(cellObj, 'top');
+            style += getBorderCss(cellObj, 'right');
+            style += getBorderCss(cellObj, 'bottom');
+            style += getBorderCss(cellObj, 'left');
+          }
+
+          var colspan = 1, rowspan = 1;
+          if (mergeMap[sk] && mergeMap[sk].isMaster) {
+            colspan = mergeMap[sk].endC - mergeMap[sk].startC + 1;
+            rowspan = mergeMap[sk].endR - mergeMap[sk].startR + 1;
+          }
+
+          var displayText = String(value);
+          if (displayText.indexOf('\n') !== -1) {
+            displayText = displayText.replace(/\n/g, '<br>');
+            style += 'white-space:pre-line;';
+          } else if (/^\s|\s$/.test(displayText)) {
+            style += 'white-space:pre-wrap;';
+          }
+          displayText = escapeHtml(displayText);
+
+          html += '<td' + (colspan > 1 ? ' colspan="' + colspan + '"' : '') +
+                       (rowspan > 1 ? ' rowspan="' + rowspan + '"' : '') +
+                       ' style="' + style + '">' + displayText + '</td>';
+        }
+        html += '</tr>';
+      }
+      html += '</tbody></table></div>';
+
+      // Compute total dimensions
+      var totalW = colWidthsPx.reduce(function (a, b) { return a + b; }, 0);
+      var totalH = rowHeightsPx.reduce(function (a, b) { return a + b; }, 0);
+      return { html: html, width: totalW, height: totalH };
+    }
+
+    // ─── Render HTML → canvas ───────────────────────────────────────
+    function htmlToCanvas(html) {
+      return new Promise(function (resolve, reject) {
+        renderHost.innerHTML = '<div style="display:inline-block; padding:0; margin:0; background:#fff;">' + html + '</div>';
+        var el = renderHost.firstChild;
+        if (!el) { reject(new Error('No renderable HTML')); return; }
+        if (typeof html2canvas === 'undefined') { reject(new Error('html2canvas not loaded')); return; }
+        html2canvas(el, {
+          scale: 2,
+          backgroundColor: '#ffffff',
+          logging: false,
+          useCORS: true
+        }).then(function (canvas) {
+          resolve(canvas);
+        }).catch(function (e) { reject(e); });
+      });
+    }
+
+    // Paper sizes (mm) - matches Excel's paperSize codes
+    var PAPER_SIZES = {
+      1: [216, 279], 5: [216, 279], 8: [261, 378], 9: [210, 297],
+      11: [148, 210], 13: [182, 257], 14: [215.9, 355.6], 17: [148, 210]
+    };
+
+    function getPageInfo(sheet) {
+      var ps = null, orient = 'portrait';
+      try { ps = sheet.pageSetup(); } catch (e) { /* ignore */ }
+      var paperSize = 9; // A4 default
+      if (ps) {
+        try {
+          if (ps.paperSize && PAPER_SIZES[ps.paperSize]) paperSize = ps.paperSize;
+        } catch (e) { /* ignore */ }
+        try {
+          if (ps.orientation) orient = String(ps.orientation).toLowerCase();
+        } catch (e) { /* ignore */ }
+      }
+      var size = PAPER_SIZES[paperSize] || [210, 297];
+      var w = size[0], h = size[1];
+      if (orient.indexOf('landscape') === 0) { var t = w; w = h; h = t; }
+      return { w: w, h: h, orient: orient.indexOf('landscape') === 0 ? 'l' : 'p' };
+    }
+
+    // ─── Convert one file ──────────────────────────────────────────
+    function convertOne(entry) {
+      if (typeof XlsxPopulate === 'undefined') { alert('xlsx-populate not loaded.'); return Promise.reject(new Error('xlsx-populate not loaded')); }
+      if (typeof html2canvas === 'undefined') { alert('html2canvas not loaded.'); return Promise.reject(new Error('html2canvas not loaded')); }
+      if (!entry.workbook) return Promise.resolve();
+      if (entry.selectedSheets.length === 0) {
+        alert('No sheets selected for ' + entry.name);
+        return Promise.resolve();
+      }
+
+      entry.status = 'processing'; entry.error = null; render();
+      var doc = null;
+      var pageInfo = null;
+      var pageNum = 0;
+
+      return (async function () {
+        for (var s = 0; s < entry.selectedSheets.length; s++) {
+          var sheetName = entry.selectedSheets[s];
+          var sheet = entry.workbook.sheet(sheetName);
+          if (!sheet) continue;
+
+          // Determine page info from the first sheet
+          if (s === 0) {
+            pageInfo = getPageInfo(sheet);
+            doc = new jspdfLib({ orientation: pageInfo.orient, unit: 'mm', format: [pageInfo.w, pageInfo.h] });
+          }
+
+          // Build HTML
+          var built = buildSheetHtml(entry.workbook, sheetName);
+          if (!built.html) continue;
+
+          // Get page margins
+          var margins = { left: 10, right: 10, top: 10, bottom: 10 };
+          try {
+            var m = sheet.pageMargins();
+            if (m) {
+              if (typeof m.left === 'number') margins.left = m.left * 25.4;
+              if (typeof m.right === 'number') margins.right = m.right * 25.4;
+              if (typeof m.top === 'number') margins.top = m.top * 25.4;
+              if (typeof m.bottom === 'number') margins.bottom = m.bottom * 25.4;
+            }
+          } catch (e) { /* ignore */ }
+
+          // Render to canvas
+          var canvas = await htmlToCanvas(built.html);
+
+          // Embed in PDF — fit the rendered image to the printable area, preserving aspect ratio
+          var availW = pageInfo.w - margins.left - margins.right;
+          var availH = pageInfo.h - margins.top - margins.bottom;
+
+          // Image dimensions in canvas pixels; convert to mm
+          var imgWmm = canvas.width * 25.4 / 96 / 2; // /2 because scale=2
+          var imgHmm = canvas.height * 25.4 / 96 / 2;
+
+          // Scale to fit within the page
+          var scale = Math.min(availW / imgWmm, availH / imgHmm);
+          if (scale > 1) scale = 1; // don't blow up
+          var drawW = imgWmm * scale;
+          var drawH = imgHmm * scale;
+
+          // Center on page
+          var x = margins.left + (availW - drawW) / 2;
+          var y = margins.top + (availH - drawH) / 2;
+
+          if (pageNum > 0) {
+            doc.addPage([pageInfo.w, pageInfo.h], pageInfo.orient);
+          }
+          doc.addImage(canvas.toDataURL('image/jpeg', 0.92), 'JPEG', x, y, drawW, drawH);
+          pageNum++;
+        }
+        if (!doc) throw new Error('No sheets to convert.');
+        entry.outputBlob = doc.output('blob');
+        entry.outputName = entry.name.replace(/\.[^.]+$/, '') + '.pdf';
+        entry.status = 'done';
+      })().catch(function (e) {
+        entry.status = 'error';
+        entry.error = e.message || 'Conversion failed';
+      }).then(function () { render(); });
+    }
+
+    function convertAll() {
+      if (files.length === 0) return;
+      showOverlay('Converting spreadsheets\u2026');
+      showBatchProgress(0, files.length);
+      var i = 0;
+      function next() {
+        if (i >= files.length) {
+          hideBatchProgress();
+          hideOverlay();
+          return;
+        }
+        var entry = files[i];
+        showBatchProgress(i, files.length);
+        setTimeout(function () {
+          convertOne(entry).then(function () {
+            i++;
+            showBatchProgress(i, files.length);
+            setTimeout(next, 100);
+          });
+        }, 30);
+      }
+      next();
+    }
+
+    function onQueueClick(e) {
+      var b = e.target.closest('button, input');
+      if (!b) return;
+      if (b.tagName === 'INPUT' && b.type === 'checkbox') {
+        if (b.hasAttribute('data-x2p-sheet')) {
+          var idx = parseInt(b.getAttribute('data-x2p-sheet'), 10);
+          var sheetName = b.getAttribute('data-sheet');
+          var entry = files[idx];
+          if (b.checked) {
+            if (entry.selectedSheets.indexOf(sheetName) === -1) entry.selectedSheets.push(sheetName);
+          } else {
+            entry.selectedSheets = entry.selectedSheets.filter(function (n) { return n !== sheetName; });
+          }
+          render();
+        } else if (b.hasAttribute('data-x2p-tog')) {
+          var idx2 = parseInt(b.getAttribute('data-x2p-tog'), 10);
+          var entry2 = files[idx2];
+          if (b.checked) {
+            entry2.selectedSheets = entry2.sheetNames.slice();
+          } else {
+            entry2.selectedSheets = [];
+          }
+          render();
+        }
+        return;
+      }
+      var dIdl = b.getAttribute('data-x2p-dl');
+      var dGo = b.getAttribute('data-x2p-go');
+      var dRetry = b.getAttribute('data-x2p-retry');
+      var dRm = b.getAttribute('data-x2p-rm');
+      if (dIdl !== null) {
+        var f = files[parseInt(dIdl, 10)];
+        if (f.outputBlob) downloadBlob(f.outputBlob, f.outputName);
+      } else if (dGo !== null) {
+        convertOne(files[parseInt(dGo, 10)]);
+      } else if (dRetry !== null) {
+        var idx3 = parseInt(dRetry, 10);
+        files[idx3].error = null;
+        files[idx3].outputBlob = null;
+        parseEntry(files[idx3]);
+      } else if (dRm !== null) {
+        removeEntry(parseInt(dRm, 10));
+      }
+    }
+
+    bindDropzone(dropzone, input, addFiles);
+    queue.addEventListener('click', onQueueClick);
+    convertAllBtn.addEventListener('click', convertAll);
+    clearBtn.addEventListener('click', clearAll);
+    render();
+  })();
+
   /* ── Hash-based view routing ── */
   var VIEW_HASH_MAP = {
     menu: 'menu-view',
@@ -2301,7 +2963,8 @@ body {
     pdf2img: 'pdf2img-view',
     'pdf-pages': 'pdf-pages-view',
     palette: 'palette-view',
-    exif: 'exif-view'
+    exif: 'exif-view',
+    excel2pdf: 'excel2pdf-view'
   };
   function syncViewFromHash() {
     var hash = (location.hash || '#menu').replace('#', '');
