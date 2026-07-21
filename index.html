@@ -1295,9 +1295,9 @@ body {
           var f = files[i];
           if (!f.width || f.error) continue;
 
-          if (!f.fullDataUrl) {
-            f.fullDataUrl = await loadImageDataUrl(f.file, f.objectUrl);
-            if (!f.fullDataUrl) continue;
+          if (!f.imageData) {
+            f.imageData = await loadImageData(f.file, f.objectUrl);
+            if (!f.imageData) continue;
           }
 
           var pw, ph, orientation;
@@ -1341,10 +1341,10 @@ body {
           var x = (pw - drawW) / 2;
           var y = (ph - drawH) / 2;
 
-          // Detect image format for jsPDF (it must match the data URL MIME type)
+          // Detect image format for jsPDF (must match the encoded data)
           var imgExt = f.name.split('.').pop().toLowerCase();
           var imgFormat = (imgExt === 'png') ? 'PNG' : (imgExt === 'webp') ? 'WEBP' : 'JPEG';
-          doc.addImage(f.fullDataUrl, imgFormat, x, y, drawW, drawH);
+          doc.addImage(f.imageData, imgFormat, x, y, drawW, drawH);
           pageNum++;
           showBatchProgress(pageNum, files.length);
         }
@@ -1363,41 +1363,65 @@ body {
       }
     }
 
-    function loadImageDataUrl(file, fallbackUrl) {
+    function loadImageData(file, fallbackUrl) {
+      // Returns a Uint8Array (binary) of the image data, suitable for jsPDF.addImage.
+      // Avoids the "Array.join : Invalid string length" error that occurs when passing
+      // large base64 data URLs through jsPDF's PDF serialization.
       return new Promise(function (resolve) {
         var ext = (file && file.name ? file.name.split('.').pop() : '').toLowerCase();
         var outMime = (ext === 'png') ? 'image/png'
                     : (ext === 'webp') ? 'image/webp'
                     : 'image/jpeg';
+
+        function arrayBufferFromBlob(blob) {
+          return new Promise(function (res, rej) {
+            var r = new FileReader();
+            r.onload = function () { res(new Uint8Array(r.result)); };
+            r.onerror = function () { rej(new Error('Read failed')); };
+            r.readAsArrayBuffer(blob);
+          });
+        }
+
         if (fallbackUrl) {
+          // File already in the queue with a preview object URL — re-encode via canvas
+          // to honor the user's chosen format (and downscale huge images).
           var img = new Image(); img.onload = function () {
             var W = img.width, H = img.height;
             var MAX = 4000;
             if (W > MAX || H > MAX) { var s = Math.min(MAX / W, MAX / H); W = Math.round(W * s); H = Math.round(H * s); }
             var c = document.createElement('canvas'); c.width = W; c.height = H;
             var ctx = c.getContext('2d');
-            // For PNG, fill background white so transparency becomes opaque on print
             if (outMime === 'image/jpeg') {
               ctx.fillStyle = '#fff';
               ctx.fillRect(0, 0, W, H);
             }
             ctx.drawImage(img, 0, 0, W, H);
             var quality = (outMime === 'image/jpeg') ? 0.92 : undefined;
-            try {
-              resolve(c.toDataURL(outMime, quality));
-            } catch (e) {
-              // Some browsers throw for unsupported webp/jpeg combinations; fall back
-              try { resolve(c.toDataURL('image/png')); } catch (e2) { resolve(null); }
+            if (typeof c.toBlob === 'function') {
+              c.toBlob(function (blob) {
+                if (!blob) { resolve(null); return; }
+                arrayBufferFromBlob(blob).then(resolve).catch(function () { resolve(null); });
+              }, outMime, quality);
+            } else {
+              // Old browsers fallback
+              try {
+                var dataUrl = c.toDataURL(outMime, quality);
+                var bin = atob(dataUrl.split(',')[1]);
+                var arr = new Uint8Array(bin.length);
+                for (var i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+                resolve(arr);
+              } catch (e) { resolve(null); }
             }
           };
           img.onerror = function () { resolve(null); };
           img.src = fallbackUrl;
           return;
         }
+        // No preview yet — read the file directly as binary
         var reader = new FileReader();
-        reader.onload = function () { resolve(reader.result); };
+        reader.onload = function () { resolve(new Uint8Array(reader.result)); };
         reader.onerror = function () { resolve(null); };
-        reader.readAsDataURL(file);
+        reader.readAsArrayBuffer(file);
       });
     }
 
